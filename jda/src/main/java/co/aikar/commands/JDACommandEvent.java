@@ -1,7 +1,5 @@
 package co.aikar.commands;
 
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.jetbrains.annotations.NotNull;
 
@@ -53,14 +51,6 @@ public class JDACommandEvent implements CommandIssuer {
 
     @Override
     public void sendMessageInternal(String message) {
-        this.event.getChannel().sendMessage(message).queue();
-    }
-
-    public void sendMessage(Message message) {
-        this.event.getChannel().sendMessage(message).queue();
-    }
-
-    public void sendMessage(MessageEmbed message) {
         this.event.getChannel().sendMessage(message).queue();
     }
 }
