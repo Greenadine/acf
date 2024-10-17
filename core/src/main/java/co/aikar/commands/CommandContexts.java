@@ -321,7 +321,7 @@ public class CommandContexts<R extends CommandExecutionContext<?, ? extends Comm
 
     /**
      * Registers a context that can safely accept a null input from the command issuer to resolve. This resolver should always
-     * call {@link CommandExecutionContext#popFirstArg()}
+     * call {@link CommandExecutionContext#popFirstArg()}.
      */
     public <T> void registerOptionalContext(Class<T> context, OptionalContextResolver<T, R> supplier) {
         contextMap.put(context, supplier);
@@ -329,7 +329,7 @@ public class CommandContexts<R extends CommandExecutionContext<?, ? extends Comm
 
     /**
      * Registers a context that requires input from the command issuer to resolve. This resolver should always
-     * call {@link CommandExecutionContext#popFirstArg()}
+     * call {@link CommandExecutionContext#popFirstArg()}.
      */
     public <T> void registerContext(Class<T> context, ContextResolver<T, R> supplier) {
         contextMap.put(context, supplier);

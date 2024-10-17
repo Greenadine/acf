@@ -2,79 +2,73 @@ package co.aikar.commands;
 
 import co.aikar.commands.apachecommonslang.ApacheCommonsExceptionUtil;
 import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.ChannelType;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class JDACommandManager extends CommandManager<
-        MessageReceivedEvent,
-        JDACommandEvent,
-        String,
-        MessageFormatter<String>,
-        JDACommandExecutionContext,
-        JDAConditionContext
-        > {
+public abstract class JDACommandManager<
+        I extends JDACommandEvent,
+        CEC extends JDACommandExecutionContext<CEC, I>,
+        CC extends JDAConditionContext<I>,
+        C,
+        MF extends MessageFormatter<C>
+        >
+        extends CommandManager<I, I, C, MF, CEC, CC> {
 
     private final JDA jda;
     protected JDACommandCompletions completions;
-    protected JDACommandContexts contexts;
+    protected JDACommandContexts<CEC, I> contexts;
     protected JDALocales locales;
     protected Map<String, JDARootCommand> commands = new HashMap<>();
-    private Logger logger;
-    private CommandConfig defaultConfig;
-    private CommandConfigProvider configProvider;
-    private CommandPermissionResolver permissionResolver;
+    protected Logger logger;
+    protected CommandConfig defaultConfig;
+    protected CommandConfigProvider configProvider;
+    protected CommandPermissionResolver permissionResolver;
     private long botOwner = 0L;
 
-    public JDACommandManager(JDA jda) {
+    protected JDACommandManager(JDA jda) {
         this(jda, null);
     }
 
-    public JDACommandManager(JDA jda, JDAOptions options) {
+    protected JDACommandManager(JDA jda, JDAOptions options) {
         if (options == null) {
             options = new JDAOptions();
         }
         this.jda = jda;
+        this.defaultConfig = options.defaultConfig != null ? options.defaultConfig : new JDACommandConfig();
         this.permissionResolver = options.permissionResolver;
-        jda.addEventListener(new JDAListener(this));
-        this.defaultConfig = options.defaultConfig == null ? new JDACommandConfig() : options.defaultConfig;
-        this.configProvider = options.configProvider;
-        this.defaultFormatter = new JDAMessageFormatter();
+//        this.defaultFormatter = new JDAMessageFormatter();  TODO: Create abstract implementation or move this to the two subclasses
         this.completions = new JDACommandCompletions(this);
         this.logger = Logger.getLogger(this.getClass().getSimpleName());
 
         getCommandConditions().addCondition("owneronly", context -> {
-            if (context.getIssuer().getEvent().getAuthor().getIdLong() != getBotOwnerId()) {
-                throw new ConditionFailedException("Only the bot owner can use this command."); // TODO: MessageKey
+            if (context.getIssuer().getUser().getIdLong() != getBotOwnerId()) {
+                throw new ConditionFailedException(JDAMessageKeys.OWNER_ONLY);
             }
         });
 
         getCommandConditions().addCondition("guildonly", context -> {
-            if (context.getIssuer().getEvent().getChannelType() != ChannelType.TEXT) {
-                throw new ConditionFailedException("This command must be used in guild chat."); // TODO: MessageKey
+            if (context.getIssuer().getChannelType() != ChannelType.TEXT) {
+                throw new ConditionFailedException(JDAMessageKeys.GUILD_ONLY);
             }
         });
 
         getCommandConditions().addCondition("privateonly", context -> {
-            if (context.getIssuer().getEvent().getChannelType() != ChannelType.PRIVATE) {
-                throw new ConditionFailedException("This command must be used in private chat."); // TODO: MessageKey
+            if (context.getIssuer().getChannelType() != ChannelType.PRIVATE) {
+                throw new ConditionFailedException(JDAMessageKeys.PRIVATE_ONLY);
             }
         });
 
         getCommandConditions().addCondition("grouponly", context -> {
-            if (context.getIssuer().getEvent().getChannelType() != ChannelType.GROUP) {
-                throw new ConditionFailedException("This command must be used in group chat."); // TODO: MessageKey
+            if (context.getIssuer().getChannelType() != ChannelType.GROUP) {
+                throw new ConditionFailedException(JDAMessageKeys.PRIVATE_ONLY);
             }
         });
     }
@@ -137,58 +131,12 @@ public class JDACommandManager extends CommandManager<
 
     @Override
     public CommandContexts<?> getCommandContexts() {
-        if (this.contexts == null) {
-            this.contexts = new JDACommandContexts(this);
-        }
-        return this.contexts;
+        return contexts;
     }
 
     @Override
     public CommandCompletions<?> getCommandCompletions() {
-        return this.completions;
-    }
-
-    @Override
-    public void registerCommand(BaseCommand command) {
-        command.onRegister(this);
-        for (Map.Entry<String, RootCommand> entry : command.registeredCommands.entrySet()) {
-            String commandName = entry.getKey().toLowerCase(Locale.ENGLISH);
-            JDARootCommand cmd = (JDARootCommand) entry.getValue();
-            if (!cmd.isRegistered) {
-                cmd.isRegistered = true;
-                commands.put(commandName, cmd);
-            }
-        }
-    }
-
-    public void unregisterCommand(BaseCommand command) {
-        for (Map.Entry<String, RootCommand> entry : command.registeredCommands.entrySet()) {
-            String jdaCommandName = entry.getKey().toLowerCase(Locale.ENGLISH);
-            JDARootCommand jdaCommand = (JDARootCommand) entry.getValue();
-            jdaCommand.getSubCommands().values().removeAll(command.subCommands.values());
-            if (jdaCommand.isRegistered && jdaCommand.getSubCommands().isEmpty()) {
-                jdaCommand.isRegistered = false;
-                commands.remove(jdaCommandName);
-            }
-        }
-    }
-
-    @Override
-    public boolean hasRegisteredCommands() {
-        return !this.commands.isEmpty();
-    }
-
-    @Override
-    public boolean isCommandIssuer(Class<?> type) {
-        return JDACommandEvent.class.isAssignableFrom(type);
-    }
-
-    @Override
-    public JDACommandEvent getCommandIssuer(Object issuer) {
-        if (!(issuer instanceof MessageReceivedEvent)) {
-            throw new IllegalArgumentException(issuer.getClass().getName() + " is not a Message Received Event.");
-        }
-        return new JDACommandEvent(this, (MessageReceivedEvent) issuer);
+        return null;  // TODO: Maybe implement this for slash commands?
     }
 
     @Override
@@ -202,24 +150,17 @@ public class JDACommandManager extends CommandManager<
     }
 
     @Override
+    public boolean hasRegisteredCommands() {
+        return !this.commands.isEmpty();
+    }
+
+    @Override
     public Locales getLocales() {
         if (this.locales == null) {
             this.locales = new JDALocales(this);
             this.locales.loadLanguages();
         }
         return this.locales;
-    }
-
-    @Override
-    public CommandExecutionContext createCommandContext(RegisteredCommand command, CommandParameter parameter, CommandIssuer sender, List<String> args, int i, Map<String, Object> passedArgs) {
-        return new JDACommandExecutionContext(command, parameter, (JDACommandEvent) sender, args, i, passedArgs);
-    }
-
-    @Override
-    public CommandCompletionContext createCompletionContext(RegisteredCommand command, CommandIssuer sender, String input, String config, String[] args) {
-        // Not really going to be used;
-        //noinspection unchecked
-        return new CommandCompletionContext(command, sender, input, config, args);
     }
 
     @Override
@@ -233,57 +174,32 @@ public class JDACommandManager extends CommandManager<
         }
     }
 
-    void dispatchEvent(MessageReceivedEvent event) {
-        Message message = event.getMessage();
-        String msg = message.getContentRaw();
+    @Override
+    public void registerCommand(BaseCommand command) {
+        command.onRegister(this);
 
-        CommandConfig config = getCommandConfig(event);
-
-        String prefixFound = null;
-        for (String prefix : config.getCommandPrefixes()) {
-            if (msg.startsWith(prefix)) {
-                prefixFound = prefix;
-                break;
+        for (Map.Entry<String, RootCommand> entry : command.registeredCommands.entrySet()) {
+            String commandName = entry.getKey().toLowerCase(Locale.ENGLISH);
+            JDARootCommand cmd = (JDARootCommand) entry.getValue();
+            if (!cmd.isRegistered) {
+                cmd.isRegistered = true;
+                commands.put(commandName, cmd);
             }
         }
-        if (prefixFound == null) {
-            return;
-        }
+    }
 
-        String[] args = ACFPatterns.SPACE.split(msg.substring(prefixFound.length()), -1);
-        if (args.length == 0) {
-            return;
-        }
-        String cmd = args[0].toLowerCase(Locale.ENGLISH);
-        JDARootCommand rootCommand = this.commands.get(cmd);
+    /**
+     * Executes a root command.
+     *
+     * @param event the event that triggered the command.
+     * @param cmd   the invoked command's name.
+     * @param args  the invoked command arguments.
+     */
+    protected void executeRootCommand(@NotNull Object event, @NotNull String cmd, @NotNull String[] args) {
+        RootCommand rootCommand = this.commands.get(cmd);
         if (rootCommand == null) {
             return;
         }
-        if (args.length > 1) {
-            args = Arrays.copyOfRange(args, 1, args.length);
-        } else {
-            args = new String[0];
-        }
         rootCommand.execute(this.getCommandIssuer(event), cmd, args);
-    }
-
-    private CommandConfig getCommandConfig(MessageReceivedEvent event) {
-        CommandConfig config = this.defaultConfig;
-        if (this.configProvider != null) {
-            CommandConfig provided = this.configProvider.provide(event);
-            if (provided != null) {
-                config = provided;
-            }
-        }
-        return config;
-    }
-
-
-    @Override
-    public String getCommandPrefix(CommandIssuer issuer) {
-        MessageReceivedEvent event = ((JDACommandEvent) issuer).getEvent();
-        CommandConfig commandConfig = getCommandConfig(event);
-        List<String> prefixes = commandConfig.getCommandPrefixes();
-        return prefixes.isEmpty() ? "" : prefixes.get(0);
     }
 }

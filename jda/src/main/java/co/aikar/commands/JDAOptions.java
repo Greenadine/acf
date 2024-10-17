@@ -6,6 +6,8 @@ import org.jetbrains.annotations.NotNull;
 public class JDAOptions {
     CommandConfig defaultConfig = new JDACommandConfig();
     CommandConfigProvider configProvider = null;
+    CommandConfigProvider messageConfigProvider = null;
+    CommandConfigProvider interactionConfigProvider = null;
     CommandPermissionResolver permissionResolver = new JDACommandPermissionResolver();
 
     public JDAOptions() {
@@ -26,7 +28,7 @@ public class JDAOptions {
         return this;
     }
 
-    public JDACommandManager create(JDA jda) {
-        return new JDACommandManager(jda, this);
+    public JDAMessageCommandManager createMessages(JDA jda) {
+        return new JDAMessageCommandManager(jda, this);
     }
 }
